@@ -206,22 +206,24 @@ label {
 #conductor {
   position: absolute; left: 50%; top: 50%;
   text-align: center; z-index: 2; pointer-events: none;
-  transform: translate(-50%,-50%) scale(1);
-  transform-origin: center center;
-  transition: filter 0.15s;
+  transform: translate(-50%,-50%);
+}
+#conductor .mouse-inner {
+  display: inline-block;
+  transform-origin: 40px 44px;
 }
 #conductor .cond-label {
   font-family: 'Fredoka One', cursive; font-size: 10px;
   color: #ffe8a0; text-shadow: 1px 1px 0 rgba(80,20,0,0.8);
   display: block; margin-top: 2px;
 }
-@keyframes conductBig {
-  0%,100% { transform: translate(-50%,-50%) scale(3); }
+@keyframes oneSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
-#conductor.conducting {
-  animation: conductBig 0.12s ease-out forwards;
+#conductor.conducting .mouse-inner {
+  animation: oneSpin 0.5s ease-in-out forwards;
   filter: drop-shadow(0 0 16px rgba(255,230,80,1)) drop-shadow(0 0 32px rgba(255,160,0,0.8));
-  z-index: 10;
 }
 
 /* ── note mice ── */
@@ -365,51 +367,37 @@ label {
   <div id="circle">
     <!-- Conductor mouse in center -->
     <div id="conductor">
-      <svg id="cond-svg" width="70" height="78" viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg">
-        <!-- baton -->
-        <line x1="54" y1="28" x2="76" y2="6" stroke="#ffe090" stroke-width="2.5" stroke-linecap="round"/>
-        <circle cx="76" cy="6" r="3.5" fill="#ffe090"/>
-        <!-- ears -->
-        <ellipse cx="27" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
-        <ellipse cx="53" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
-        <ellipse cx="27" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.6"/>
-        <ellipse cx="53" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.6"/>
-        <!-- body -->
-        <ellipse cx="40" cy="48" rx="28" ry="27" fill="#ffc8d8" stroke="#fff" stroke-width="2"/>
-        <ellipse cx="40" cy="55" rx="14" ry="12" fill="#fff0f5" opacity="0.6"/>
-        <!-- tux jacket -->
-        <ellipse cx="40" cy="58" rx="13" ry="14" fill="#2a1a3a" opacity="0.85"/>
-        <ellipse cx="40" cy="56" rx="5"  ry="9"  fill="#fff8f0" opacity="0.9"/>
-        <!-- bow tie -->
-        <polygon points="36,48 40,51 36,54" fill="#e05080"/>
-        <polygon points="44,48 40,51 44,54" fill="#e05080"/>
-        <circle cx="40" cy="51" r="2" fill="#c04060"/>
-        <!-- blush cheeks like the other mice -->
-        <ellipse cx="20" cy="54" rx="8" ry="5" fill="#ffd6e8" opacity="0.3"/>
-        <ellipse cx="60" cy="54" rx="8" ry="5" fill="#ffd6e8" opacity="0.3"/>
-        <!-- eyes — bigger and wider -->
-        <ellipse id="cond-eye-l" cx="31" cy="42" rx="6" ry="5" fill="#2a1a0a"/>
-        <ellipse id="cond-eye-r" cx="49" cy="42" rx="6" ry="5" fill="#2a1a0a"/>
-        <circle cx="33" cy="40" r="2.2" fill="white"/>
-        <circle cx="51" cy="40" r="2.2" fill="white"/>
-        <!-- happy squint arcs (shown when big) -->
-        <path id="cond-squint-l" d="M27 41 Q31 37 35 41" fill="none" stroke="#2a1a0a" stroke-width="3" stroke-linecap="round" opacity="0"/>
-        <path id="cond-squint-r" d="M45 41 Q49 37 53 41" fill="none" stroke="#2a1a0a" stroke-width="3" stroke-linecap="round" opacity="0"/>
-        <!-- nose — same as other mice, no outline -->
-        <ellipse cx="40" cy="52" rx="4.5" ry="3" fill="#c04060" stroke="none"/>
-        <!-- whiskers — longer and thinner -->
-        <line x1="2"  y1="49" x2="33" y2="52" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
-        <line x1="2"  y1="55" x2="33" y2="53" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
-        <line x1="78" y1="49" x2="47" y2="52" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
-        <line x1="78" y1="55" x2="47" y2="53" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
-        <!-- resting smile — closed, gentle -->
-        <path id="cond-smile" d="M29 56 Q40 66 51 56" fill="none" stroke="#c04060" stroke-width="3" stroke-linecap="round"/>
-        <!-- big closed smile when large (hidden at rest) -->
-        <path id="cond-sing" d="M24 55 Q40 72 56 55" fill="none" stroke="#c04060" stroke-width="3.5" stroke-linecap="round" opacity="0"/>
-        <!-- paws raised in joy when singing -->
-        <ellipse id="cond-paw-l" cx="26" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
-        <ellipse id="cond-paw-r" cx="54" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
-      </svg>
+      <div class="mouse-inner">
+        <svg id="cond-svg" width="80" height="88" viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;overflow:visible;">
+          <ellipse cx="27" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
+          <ellipse cx="53" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
+          <ellipse cx="27" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.55"/>
+          <ellipse cx="53" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.55"/>
+          <ellipse cx="40" cy="48" rx="28" ry="27" fill="#ffc8d8" stroke="#fff" stroke-width="2"/>
+          <ellipse cx="40" cy="55" rx="14" ry="12" fill="#fff0f5" opacity="0.55"/>
+          <ellipse cx="20" cy="54" rx="8"  ry="5"  fill="#e05080" opacity="0.3"/>
+          <ellipse cx="60" cy="54" rx="8"  ry="5"  fill="#e05080" opacity="0.3"/>
+          <ellipse cx="31" cy="42" rx="4.5" ry="4.5" fill="#2a1a0a"/>
+          <ellipse cx="49" cy="42" rx="4.5" ry="4.5" fill="#2a1a0a"/>
+          <circle  cx="33" cy="40" r="1.8" fill="white"/>
+          <circle  cx="51" cy="40" r="1.8" fill="white"/>
+          <ellipse cx="40" cy="52" rx="4.5" ry="3" fill="#c04060"/>
+          <line x1="6"  y1="50" x2="32" y2="53" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+          <line x1="6"  y1="56" x2="32" y2="54" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+          <line x1="74" y1="50" x2="48" y2="53" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+          <line x1="74" y1="56" x2="48" y2="54" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+          <path id="cond-smile" d="M31 57 Q40 65 49 57" fill="none" stroke="#c04060" stroke-width="2.5" stroke-linecap="round"/>
+          <path id="cond-sing"  d="M26 56 Q40 70 54 56" fill="none" stroke="#c04060" stroke-width="3"   stroke-linecap="round" opacity="0"/>
+          <ellipse cx="28" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
+          <ellipse cx="52" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
+          <circle cx="23" cy="74" r="2.3" fill="#ffc8d8"/>
+          <circle cx="28" cy="72" r="2.3" fill="#ffc8d8"/>
+          <circle cx="33" cy="74" r="2.3" fill="#ffc8d8"/>
+          <circle cx="47" cy="74" r="2.3" fill="#ffc8d8"/>
+          <circle cx="52" cy="72" r="2.3" fill="#ffc8d8"/>
+          <circle cx="57" cy="74" r="2.3" fill="#ffc8d8"/>
+        </svg>
+      </div>
       <span class="cond-label">Nice!</span>
     </div>
   </div>
@@ -836,7 +824,6 @@ function triggerNote(midi, name, el) {
   el.querySelectorAll('.mouth-smile').forEach(m => m.style.opacity = '0');
   el.querySelectorAll('.mouth-sing').forEach(m => m.setAttribute('opacity','1'));
 
-  // Conductor grows with big closed smile
   const cond = document.getElementById('conductor');
   cond.classList.add('conducting');
   document.getElementById('cond-sing').setAttribute('opacity','1');
