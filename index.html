@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mouse Orchestra v6</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  overflow: hidden;
+  position: relative;
+  background: #1a0800;
+}
+
+#bg-canvas {
+  position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%;
+}
+
+/* ══ SIDEBAR ══ */
+#sidebar {
+  position: fixed; top: 0; left: 0;
+  width: 224px; height: 100vh;
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 12px 10px 18px;
+  background: rgba(18,6,0,0.62);
+  backdrop-filter: blur(14px);
+  border-right: 1.5px solid rgba(255,180,60,0.2);
+  overflow-y: auto;
+}
+
+#sidebar h2 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 19px; color: #ffe8a0;
+  text-shadow: 0 0 14px rgba(255,160,0,0.8), 2px 2px 0 #7c3000;
+  text-align: center; line-height: 1.2; margin-bottom: 2px;
+}
+
+/* ── panel ── */
+.cat-panel { width: 100%; }
+
+.cat-header {
+  width: 100%; display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: rgba(255,155,35,0.18);
+  border: 1.5px solid rgba(255,180,60,0.38);
+  border-radius: 28px; cursor: pointer; user-select: none;
+}
+.cat-header .title-txt {
+  font-family: 'Fredoka One', cursive; font-size: 13px;
+  color: #ffe0a0; text-shadow: 1px 1px 0 rgba(120,40,0,0.5);
+  flex: 1; text-align: left;
+}
+.arrow { transition: transform 0.3s; font-size: 11px; color: #ffcc60; }
+.arrow.open { transform: rotate(180deg); }
+
+.cat-body {
+  overflow: hidden;
+  transition: max-height 0.38s ease, opacity 0.3s, padding 0.3s;
+  padding: 7px 8px 5px;
+  background: rgba(255,130,15,0.08);
+  border: 1px solid rgba(255,160,40,0.2);
+  border-radius: 0 0 14px 14px; border-top: none;
+}
+.cat-body.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+.cat-body.open      { max-height: 320px; opacity: 1; }
+
+/* ── form controls ── */
+button, select {
+  display: block; width: 100%;
+  padding: 5px 9px; margin: 3px 0;
+  font-size: 12px; font-family: 'Nunito', sans-serif; font-weight: 700;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255,200,80,0.38);
+  background: rgba(255,220,100,0.13);
+  color: #ffe8c0; cursor: pointer; text-align: left;
+}
+button:hover { background: rgba(255,200,60,0.28); }
+button.active { background: rgba(60,220,80,0.22); border-color: rgba(80,255,100,0.5); color: #afffb8; }
+button.warn   { background: rgba(255,80,60,0.18);  border-color: rgba(255,120,80,0.5); color: #ffccaa; }
+
+label {
+  display: block; color: #ffcc80; font-weight: 700;
+  font-size: 11px; margin: 5px 0 2px;
+  text-shadow: 1px 1px 0 rgba(80,20,0,0.5);
+}
+.status-txt { color: #ffddaa; font-size: 11px; display: block; margin: 2px 0; }
+
+.indicator {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; background: #e05;
+  margin-left: 4px; vertical-align: middle;
+  box-shadow: 0 0 5px currentColor;
+}
+.indicator.on { background: #4f4; box-shadow: 0 0 6px #4f4; }
+
+/* ══ MIDI bottom bar ══ */
+#midi-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  background: rgba(12,4,0,0.82);
+  backdrop-filter: blur(12px);
+  border-top: 1.5px solid rgba(255,180,60,0.22);
+  padding: 6px 18px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+#midi-bar .mb-label {
+  font-family: 'Fredoka One', cursive; font-size: 12px;
+  color: #ffcc80; white-space: nowrap;
+}
+#midi-bar button, #midi-bar select {
+  display: inline-block; width: auto; padding: 4px 12px;
+  font-size: 11px; margin: 0;
+}
+#midi-bar select { min-width: 140px; }
+
+/* ── instrument row ── */
+.inst-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+}
+.inst-btn {
+  font-size: 11px !important; padding: 4px 6px !important;
+  text-align: center !important;
+}
+.inst-btn.active { background: rgba(60,220,80,0.28) !important; border-color: rgba(80,255,100,0.6) !important; color: #b0ffb8 !important; }
+
+/* ── reverb slider ── */
+.rev-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+#reverbSlider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1; height: 5px; border-radius: 3px;
+  background: linear-gradient(to right,
+    rgba(160,120,255,0.85) 0%,
+    rgba(160,120,255,0.85) var(--rev-pct,0%),
+    rgba(255,255,255,0.12) var(--rev-pct,0%));
+  outline: none; border: none; cursor: pointer;
+}
+#reverbSlider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: #c080ff;
+  box-shadow: 0 0 6px rgba(180,100,255,0.8); cursor: pointer;
+}
+#reverbSlider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #c080ff; border: none; cursor: pointer;
+}
+
+#vol-section {
+  padding: 7px 8px 6px;
+  background: rgba(255,140,20,0.1);
+  border: 1px solid rgba(255,180,60,0.25);
+  border-radius: 14px;
+}
+#vol-label {
+  font-family: 'Fredoka One', cursive; font-size: 12px;
+  color: #ffe0a0; display: block; margin-bottom: 6px; text-align: center;
+}
+.slider-row { display: flex; align-items: center; gap: 5px; position: relative; }
+
+#volSlider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1; height: 5px; border-radius: 3px;
+  background: linear-gradient(to right,
+    rgba(255,220,80,0.85) 0%,
+    rgba(255,220,80,0.85) var(--pct,70%),
+    rgba(255,255,255,0.12) var(--pct,70%));
+  outline: none; border: none; cursor: pointer;
+}
+#volSlider::-webkit-slider-thumb { -webkit-appearance: none; width: 1px; height: 1px; background: transparent; }
+#volSlider::-moz-range-thumb     { width: 1px; height: 1px; background: transparent; border: none; }
+
+#butterfly-knob {
+  position: absolute; top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none; width: 32px; height: 32px; left: 0;
+}
+@keyframes flutter {
+  0%,100% { transform: translateY(-50%) scaleX(1)    rotate(-5deg); }
+  50%      { transform: translateY(-50%) scaleX(0.68) rotate(5deg); }
+}
+#butterfly-knob svg { animation: flutter 0.85s ease-in-out infinite; filter: drop-shadow(0 0 7px rgba(255,255,255,0.95)) drop-shadow(0 0 14px rgba(200,200,255,0.7)); }
+
+/* ══ STAGE ══ */
+#stage {
+  position: fixed; top: 0; left: 224px;
+  right: 0; bottom: 48px; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+#stage-title {
+  font-family: 'Fredoka One', cursive; font-size: 44px;
+  color: #ffe090;
+  text-shadow: 0 0 35px rgba(255,160,0,0.9), 3px 3px 0 #7c2800, 6px 6px 0 rgba(120,40,0,0.35);
+  letter-spacing: 2px; margin-bottom: 6px;
+  pointer-events: none; user-select: none;
+}
+
+/* ── orchestra circle ── */
+#circle { position: relative; width: 600px; height: 600px; flex-shrink: 0; }
+
+/* conductor center mouse */
+#conductor {
+  position: absolute; left: 50%; top: 50%;
+  text-align: center; z-index: 2; pointer-events: none;
+  transform: translate(-50%,-50%) scale(1);
+  transform-origin: center center;
+  transition: filter 0.15s;
+}
+#conductor .cond-label {
+  font-family: 'Fredoka One', cursive; font-size: 10px;
+  color: #ffe8a0; text-shadow: 1px 1px 0 rgba(80,20,0,0.8);
+  display: block; margin-top: 2px;
+}
+@keyframes conductBig {
+  0%,100% { transform: translate(-50%,-50%) scale(3); }
+}
+#conductor.conducting {
+  animation: conductBig 0.12s ease-out forwards;
+  filter: drop-shadow(0 0 16px rgba(255,230,80,1)) drop-shadow(0 0 32px rgba(255,160,0,0.8));
+  z-index: 10;
+}
+
+/* ── note mice ── */
+.note {
+  position: absolute; width: 100px; height: 112px;
+  cursor: pointer; text-align: center;
+}
+.mouse-wrap {
+  display: inline-block;
+  transition: transform 0.18s cubic-bezier(.34,1.56,.64,1);
+}
+.note:hover .mouse-wrap,
+.note.playing .mouse-wrap { transform: scale(1.4); }
+
+@keyframes wigL { 0%,100%{transform:rotate(0);transform-origin:28px 22px} 45%{transform:rotate(-22deg);transform-origin:28px 22px} }
+@keyframes wigR { 0%,100%{transform:rotate(0);transform-origin:52px 22px} 45%{transform:rotate(22deg);transform-origin:52px 22px} }
+.note:hover .ear-l, .note.playing .ear-l { animation: wigL 0.45s ease; }
+.note:hover .ear-r, .note.playing .ear-r { animation: wigR 0.45s ease; }
+
+.blush { opacity: 0; transition: opacity 0.2s; }
+.note:hover .blush, .note.playing .blush { opacity: 1; }
+
+.note-label {
+  font-family: 'Fredoka One', cursive; font-size: 11px;
+  color: #ffe8a0; text-shadow: 1px 1px 0 rgba(80,20,0,0.8);
+  line-height: 1.2; margin-top: 0;
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- ══ SIDEBAR ══ -->
+<nav id="sidebar">
+  <h2>🐭 Mouse<br>Orchestra</h2>
+
+  <!-- Volume FIRST (top priority) -->
+  <div id="vol-section">
+    <span id="vol-label">🦋 Volume</span>
+    <div class="slider-row">
+      <span style="font-size:12px;color:#ffcc80;">🔈</span>
+      <div style="position:relative;flex:1;height:30px;display:flex;align-items:center;">
+        <input type="range" id="volSlider" min="0" max="100" value="10" oninput="onVolChange(this)">
+        <div id="butterfly-knob">
+          <svg width="32" height="32" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+            <!-- all white/near-white for glow effect -->
+            <ellipse cx="10" cy="15" rx="10" ry="8"  fill="white" opacity="0.92" transform="rotate(-30 10 15)"/>
+            <ellipse cx="9"  cy="22" rx="7"  ry="5"  fill="#ddd"  opacity="0.85" transform="rotate(20 9 22)"/>
+            <ellipse cx="26" cy="15" rx="10" ry="8"  fill="white" opacity="0.92" transform="rotate(30 26 15)"/>
+            <ellipse cx="27" cy="22" rx="7"  ry="5"  fill="#ddd"  opacity="0.85" transform="rotate(-20 27 22)"/>
+            <ellipse cx="18" cy="18" rx="2.5" ry="8" fill="#aac0ff"/>
+            <line x1="18" y1="9" x2="13" y2="3" stroke="#aac0ff" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="13" cy="3" r="1.8" fill="white"/>
+            <line x1="18" y1="9" x2="23" y2="3" stroke="#aac0ff" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="23" cy="3" r="1.8" fill="white"/>
+            <!-- veins / shimmer -->
+            <ellipse cx="10" cy="13" rx="5" ry="2.5" fill="rgba(200,220,255,0.4)" transform="rotate(-30 10 13)"/>
+            <ellipse cx="26" cy="13" rx="5" ry="2.5" fill="rgba(200,220,255,0.4)" transform="rotate(30 26 13)"/>
+          </svg>
+        </div>
+      </div>
+      <span style="font-size:12px;color:#ffcc80;">🔊</span>
+    </div>
+  </div>
+
+  <!-- Instrument panel -->
+  <div class="cat-panel">
+    <div class="cat-header" onclick="togglePanel('p1')">
+      <svg width="20" height="20" viewBox="0 0 40 40" style="flex-shrink:0">
+        <ellipse cx="20" cy="24" rx="13" ry="11" fill="#d4b3ff" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="20" cy="18" rx="10" ry="9"  fill="#d4b3ff" stroke="#fff" stroke-width="1.5"/>
+        <polygon points="9,12 5,2 15,10"  fill="#b388ff" stroke="#fff" stroke-width="1"/>
+        <polygon points="31,12 35,2 25,10" fill="#b388ff" stroke="#fff" stroke-width="1"/>
+        <ellipse cx="15" cy="17" rx="2.5" ry="3" fill="#1a0a2a"/>
+        <ellipse cx="25" cy="17" rx="2.5" ry="3" fill="#1a0a2a"/>
+        <circle cx="16" cy="16" r="1" fill="white"/>
+        <circle cx="26" cy="16" r="1" fill="white"/>
+        <polygon points="20,21 18.5,23 21.5,23" fill="#e05080"/>
+        <path d="M17 24 Q20 27 23 24" fill="none" stroke="#e05080" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      <span class="title-txt">🎵 Sound</span>
+      <span class="arrow open" id="arrow-p1">▼</span>
+    </div>
+    <div class="cat-body open" id="p1">
+      <button onclick="toggleSound()" id="soundBtn">🔊 Sound: ON</button>
+      <span id="soundState" class="status-txt">Audio Enabled</span>
+
+      <label style="margin-top:8px;">Instrument</label>
+      <div class="inst-grid">
+        <button class="inst-btn" id="inst-squeak" onclick="setInstrument('squeak')">🐭 Mouse</button>
+        <button class="inst-btn active" id="inst-flute"  onclick="setInstrument('flute')">🪈 Flute</button>
+        <button class="inst-btn" id="inst-bell"   onclick="setInstrument('bell')">🔔 Bell</button>
+        <button class="inst-btn" id="inst-marimba" onclick="setInstrument('marimba')">🎹 Marimba</button>
+      </div>
+
+      <label style="margin-top:8px;">✨ Reverb</label>
+      <div class="rev-row">
+        <span style="font-size:11px;color:#c080ff;">dry</span>
+        <input type="range" id="reverbSlider" min="0" max="100" value="75" oninput="onReverbChange(this)">
+        <span style="font-size:11px;color:#c080ff;">wet</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scale panel -->
+  <div class="cat-panel">
+    <div class="cat-header" onclick="togglePanel('p2')">
+      <svg width="20" height="20" viewBox="0 0 40 40" style="flex-shrink:0">
+        <ellipse cx="20" cy="24" rx="13" ry="11" fill="#ffb3d9" stroke="#fff" stroke-width="1.5"/>
+        <ellipse cx="20" cy="18" rx="10" ry="9"  fill="#ffb3d9" stroke="#fff" stroke-width="1.5"/>
+        <polygon points="9,12 5,2 15,10"  fill="#ff80bf" stroke="#fff" stroke-width="1"/>
+        <polygon points="31,12 35,2 25,10" fill="#ff80bf" stroke="#fff" stroke-width="1"/>
+        <ellipse cx="15" cy="17" rx="2.5" ry="3" fill="#1a0a2a"/>
+        <ellipse cx="25" cy="17" rx="2.5" ry="3" fill="#1a0a2a"/>
+        <circle cx="16" cy="16" r="1" fill="white"/>
+        <circle cx="26" cy="16" r="1" fill="white"/>
+        <polygon points="20,21 18.5,23 21.5,23" fill="#c040a0"/>
+        <path d="M17 24 Q20 27 23 24" fill="none" stroke="#c040a0" stroke-width="1.2" stroke-linecap="round"/>
+        <path d="M33 34 Q42 28 37 22" fill="none" stroke="#ffb3d9" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="title-txt">Scale &amp; Root</span>
+      <span class="arrow open" id="arrow-p2">▼</span>
+    </div>
+    <div class="cat-body open" id="p2">
+      <label>Root Note</label>
+      <select id="rootSelect"></select>
+      <label>Scale Type</label>
+      <select id="scaleSelect">
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+      </select>
+      <span class="status-txt">Playing: <strong id="currentScale" style="color:#ffe090;">C4 Major</strong></span>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ STAGE ══ -->
+<div id="stage">
+  <div id="stage-title">🐭 Mouse Orchestra</div>
+  <div id="circle">
+    <!-- Conductor mouse in center -->
+    <div id="conductor">
+      <svg id="cond-svg" width="70" height="78" viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg">
+        <!-- baton -->
+        <line x1="54" y1="28" x2="76" y2="6" stroke="#ffe090" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="76" cy="6" r="3.5" fill="#ffe090"/>
+        <!-- ears -->
+        <ellipse cx="27" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
+        <ellipse cx="53" cy="22" rx="14" ry="14" fill="#ffd6e8" stroke="#fff" stroke-width="2"/>
+        <ellipse cx="27" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.6"/>
+        <ellipse cx="53" cy="22" rx="8"  ry="8"  fill="#fff5f8" opacity="0.6"/>
+        <!-- body -->
+        <ellipse cx="40" cy="48" rx="28" ry="27" fill="#ffc8d8" stroke="#fff" stroke-width="2"/>
+        <ellipse cx="40" cy="55" rx="14" ry="12" fill="#fff0f5" opacity="0.6"/>
+        <!-- tux jacket -->
+        <ellipse cx="40" cy="58" rx="13" ry="14" fill="#2a1a3a" opacity="0.85"/>
+        <ellipse cx="40" cy="56" rx="5"  ry="9"  fill="#fff8f0" opacity="0.9"/>
+        <!-- bow tie -->
+        <polygon points="36,48 40,51 36,54" fill="#e05080"/>
+        <polygon points="44,48 40,51 44,54" fill="#e05080"/>
+        <circle cx="40" cy="51" r="2" fill="#c04060"/>
+        <!-- blush cheeks like the other mice -->
+        <ellipse cx="20" cy="54" rx="8" ry="5" fill="#ffd6e8" opacity="0.3"/>
+        <ellipse cx="60" cy="54" rx="8" ry="5" fill="#ffd6e8" opacity="0.3"/>
+        <!-- eyes — bigger and wider -->
+        <ellipse id="cond-eye-l" cx="31" cy="42" rx="6" ry="5" fill="#2a1a0a"/>
+        <ellipse id="cond-eye-r" cx="49" cy="42" rx="6" ry="5" fill="#2a1a0a"/>
+        <circle cx="33" cy="40" r="2.2" fill="white"/>
+        <circle cx="51" cy="40" r="2.2" fill="white"/>
+        <!-- happy squint arcs (shown when big) -->
+        <path id="cond-squint-l" d="M27 41 Q31 37 35 41" fill="none" stroke="#2a1a0a" stroke-width="3" stroke-linecap="round" opacity="0"/>
+        <path id="cond-squint-r" d="M45 41 Q49 37 53 41" fill="none" stroke="#2a1a0a" stroke-width="3" stroke-linecap="round" opacity="0"/>
+        <!-- nose — same as other mice, no outline -->
+        <ellipse cx="40" cy="52" rx="4.5" ry="3" fill="#c04060" stroke="none"/>
+        <!-- whiskers — longer and thinner -->
+        <line x1="2"  y1="49" x2="33" y2="52" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
+        <line x1="2"  y1="55" x2="33" y2="53" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
+        <line x1="78" y1="49" x2="47" y2="52" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
+        <line x1="78" y1="55" x2="47" y2="53" stroke="#aa8866" stroke-width="0.7" opacity="0.55"/>
+        <!-- resting smile — closed, gentle -->
+        <path id="cond-smile" d="M29 56 Q40 66 51 56" fill="none" stroke="#c04060" stroke-width="3" stroke-linecap="round"/>
+        <!-- big closed smile when large (hidden at rest) -->
+        <path id="cond-sing" d="M24 55 Q40 72 56 55" fill="none" stroke="#c04060" stroke-width="3.5" stroke-linecap="round" opacity="0"/>
+        <!-- paws raised in joy when singing -->
+        <ellipse id="cond-paw-l" cx="26" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
+        <ellipse id="cond-paw-r" cx="54" cy="76" rx="9" ry="6" fill="#ffd6e8" stroke="#fff" stroke-width="1.5"/>
+      </svg>
+      <span class="cond-label">Nice!</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MIDI BAR (bottom) ══ -->
+<div id="midi-bar">
+  <span class="mb-label">🎹 MIDI</span>
+  <button onclick="requestMIDIPermission()" id="midiPermBtn" style="padding:4px 12px;width:auto;font-size:11px;margin:0;">Enable MIDI</button>
+  <select id="midiSelect" style="display:none;min-width:140px;padding:4px 8px;font-size:11px;margin:0;" onchange="selectMIDIOut(this.value)">
+    <option value="">— select device —</option>
+  </select>
+  <span class="status-txt" id="midiStatus" style="margin:0;font-size:11px;">
+    Not connected
+    <span class="indicator" id="midiLight"></span>
+  </span>
+  <span class="status-txt" id="midiActivity" style="margin:0;font-size:11px;">No MIDI activity</span>
+</div>
+
+<script>
+/* ══ Audio ══ */
+let audioCtx = null, masterGain = null, reverbNode = null, reverbWet = null, reverbDry = null;
+let soundOn = true, volume = 0.10, reverbAmount = 0.75;
+let currentInstrument = 'flute';
+
+function getCtx() {
+  if (!audioCtx) {
+    audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = volume;
+
+    // Reverb chain: masterGain → dryGain → destination
+    //                         → convolverNode → wetGain → destination
+    reverbDry = audioCtx.createGain();
+    reverbWet = audioCtx.createGain();
+    reverbNode = audioCtx.createConvolver();
+    reverbDry.gain.value = 0.55;  /* 1 - 0.75*0.6 */
+    reverbWet.gain.value = 0.75;
+
+    // Build impulse response for reverb
+    buildImpulse(audioCtx, reverbNode);
+
+    masterGain.connect(reverbDry);
+    masterGain.connect(reverbNode);
+    reverbNode.connect(reverbWet);
+    reverbDry.connect(audioCtx.destination);
+    reverbWet.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function buildImpulse(ctx, convolver) {
+  const sampleRate = ctx.sampleRate;
+  const length = sampleRate * 2.8; // 2.8s tail
+  const impulse = ctx.createBuffer(2, length, sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const ch = impulse.getChannelData(c);
+    for (let i = 0; i < length; i++) {
+      ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.2);
+    }
+  }
+  convolver.buffer = impulse;
+}
+
+function onReverbChange(el) {
+  reverbAmount = el.value / 100;
+  el.style.setProperty('--rev-pct', el.value + '%');
+  if (reverbDry)  reverbDry.gain.value  = 1 - reverbAmount * 0.6;
+  if (reverbWet)  reverbWet.gain.value  = reverbAmount;
+}
+
+function setInstrument(name) {
+  currentInstrument = name;
+  document.querySelectorAll('.inst-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('inst-' + name).classList.add('active');
+}
+
+function onVolChange(el) {
+  volume = el.value / 100;
+  if (masterGain) masterGain.gain.value = volume;
+  el.style.setProperty('--pct', el.value + '%');
+  const knob = document.getElementById('butterfly-knob');
+  const tw   = el.offsetWidth - 14;
+  knob.style.left = Math.round(volume * tw - 8) + 'px';
+}
+
+/* ══ MIDI ══ */
+let midiAccess = null, midiOut = null;
+
+async function requestMIDIPermission() {
+  const btn = document.getElementById('midiPermBtn');
+  btn.textContent = '⏳ Requesting…';
+  try {
+    midiAccess = await navigator.requestMIDIAccess();
+    populateMIDIDropdown();
+    btn.textContent = '✅ MIDI Access Granted';
+    btn.classList.add('active');
+    document.getElementById('midiSelect').style.display = 'block';
+    midiAccess.onstatechange = () => populateMIDIDropdown();
+  } catch(e) {
+    btn.textContent = '❌ MIDI Denied – retry?';
+    btn.classList.add('warn');
+    document.getElementById('midiStatus').childNodes[0].textContent = 'Access denied';
+  }
+}
+
+function populateMIDIDropdown() {
+  const sel = document.getElementById('midiSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select device —</option>';
+  if (!midiAccess) return;
+  for (const [id, out] of midiAccess.outputs) {
+    const opt = document.createElement('option');
+    opt.value = id; opt.text = out.name;
+    if (id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  // Auto-select first if nothing chosen
+  if (!midiOut && midiAccess.outputs.size > 0) {
+    const first = midiAccess.outputs.values().next().value;
+    sel.value = first.id;
+    selectMIDIOut(first.id);
+  }
+}
+
+function selectMIDIOut(id) {
+  if (!midiAccess) return;
+  midiOut = id ? midiAccess.outputs.get(id) : null;
+  const st  = document.getElementById('midiStatus');
+  const lit = document.getElementById('midiLight');
+  if (midiOut) {
+    st.childNodes[0].textContent = '🎹 ' + midiOut.name + ' ';
+    lit.classList.add('on');
+  } else {
+    st.childNodes[0].textContent = 'No device selected ';
+    lit.classList.remove('on');
+  }
+}
+
+function flashMIDI(name) {
+  const lit = document.getElementById('midiLight');
+  const act = document.getElementById('midiActivity');
+  lit.classList.add('on');
+  act.innerText = '▶ ' + name;
+  setTimeout(() => { if (!midiOut) lit.classList.remove('on'); act.innerText = 'No MIDI activity'; }, 280);
+}
+
+function sendMIDI(note, name) {
+  if (!midiOut) return;
+  midiOut.send([0x90, note, 100]);
+  setTimeout(() => midiOut.send([0x80, note, 0]), 350);
+  flashMIDI(name);
+}
+
+/* ══ Scale ══ */
+let root = 60, scaleType = 'major';
+const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const scales = {
+  major: [0,2,4,5,7,9,11,12,14,16,17,19,21,23],
+  minor: [0,2,3,5,7,8,10,12,14,15,17,19,20,22]
+};
+const rootSel = document.getElementById('rootSelect');
+for (let i = 48; i <= 72; i++) {
+  const o = document.createElement('option');
+  o.value = i; o.text = noteNames[i%12] + (Math.floor(i/12)-1);
+  if (i === 60) o.selected = true;
+  rootSel.appendChild(o);
+}
+rootSel.onchange = () => { root = parseInt(rootSel.value); updateLabel(); createCircle(); };
+document.getElementById('scaleSelect').onchange = e => { scaleType = e.target.value; updateLabel(); createCircle(); };
+function updateLabel() {
+  document.getElementById('currentScale').innerText =
+    noteNames[root%12] + (Math.floor(root/12)-1) + ' ' + scaleType;
+}
+
+/* ══ Mouse SVG ══ */
+const PALETTES = [
+  { body:'#ffcba4', ear:'#ff9966', nose:'#c85030', belly:'#fff0e8' },
+  { body:'#ffe0a0', ear:'#ffb830', nose:'#b07000', belly:'#fffae0' },
+  { body:'#ffd6e8', ear:'#ffaac8', nose:'#c04080', belly:'#fff0f6' },
+  { body:'#ffc8b0', ear:'#ff8855', nose:'#aa3010', belly:'#fff4ee' },
+  { body:'#e8d4ff', ear:'#c090ff', nose:'#7030c0', belly:'#f8f0ff' },
+];
+
+function mouseSVG(idx) {
+  const p = PALETTES[idx % PALETTES.length];
+  return `<svg width="80" height="88" viewBox="0 0 80 88" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:auto;overflow:visible;">
+    <ellipse class="ear-l" cx="27" cy="22" rx="14" ry="14" fill="${p.ear}" stroke="#fff" stroke-width="2"/>
+    <ellipse class="ear-r" cx="53" cy="22" rx="14" ry="14" fill="${p.ear}" stroke="#fff" stroke-width="2"/>
+    <ellipse cx="27" cy="22" rx="8" ry="8" fill="${p.belly}" opacity="0.55"/>
+    <ellipse cx="53" cy="22" rx="8" ry="8" fill="${p.belly}" opacity="0.55"/>
+    <ellipse cx="40" cy="48" rx="28" ry="27" fill="${p.body}" stroke="#fff" stroke-width="2"/>
+    <ellipse cx="40" cy="55" rx="14" ry="12" fill="${p.belly}" opacity="0.55"/>
+    <ellipse class="blush" cx="20" cy="54" rx="8" ry="5" fill="${p.nose}" opacity="0.3"/>
+    <ellipse class="blush" cx="60" cy="54" rx="8" ry="5" fill="${p.nose}" opacity="0.3"/>
+    <ellipse cx="31" cy="42" rx="4.5" ry="4.5" fill="#2a1a0a"/>
+    <ellipse cx="49" cy="42" rx="4.5" ry="4.5" fill="#2a1a0a"/>
+    <circle  cx="33" cy="40" r="1.8" fill="white"/>
+    <circle  cx="51" cy="40" r="1.8" fill="white"/>
+    <ellipse cx="40" cy="52" rx="4.5" ry="3" fill="${p.nose}"/>
+    <line x1="6"  y1="50" x2="32" y2="53" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+    <line x1="6"  y1="56" x2="32" y2="54" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+    <line x1="74" y1="50" x2="48" y2="53" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+    <line x1="74" y1="56" x2="48" y2="54" stroke="#aa8866" stroke-width="1.2" opacity="0.6"/>
+    <path class="mouth-smile" d="M31 57 Q40 65 49 57" fill="none" stroke="${p.nose}" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse class="mouth-sing" cx="40" cy="60" rx="6.5" ry="8.5" fill="${p.nose}"/>
+    <ellipse class="mouth-sing" cx="40" cy="60" rx="4"   ry="5.5" fill="#1a0800"/>
+    <ellipse cx="28" cy="76" rx="9"  ry="6" fill="${p.ear}" stroke="#fff" stroke-width="1.5"/>
+    <ellipse cx="52" cy="76" rx="9"  ry="6" fill="${p.ear}" stroke="#fff" stroke-width="1.5"/>
+    <circle cx="23" cy="74" r="2.3" fill="${p.body}"/>
+    <circle cx="28" cy="72" r="2.3" fill="${p.body}"/>
+    <circle cx="33" cy="74" r="2.3" fill="${p.body}"/>
+    <circle cx="47" cy="74" r="2.3" fill="${p.body}"/>
+    <circle cx="52" cy="72" r="2.3" fill="${p.body}"/>
+    <circle cx="57" cy="74" r="2.3" fill="${p.body}"/>
+  </svg>`;
+}
+
+/* ══ Circle ══ */
+const circleEl = document.getElementById('circle');
+
+function createCircle() {
+  // Remove old notes but keep conductor
+  circleEl.querySelectorAll('.note').forEach(n => n.remove());
+  const center = 300, radius = 230;
+  const scale  = scales[scaleType];
+
+  scale.forEach((interval, i) => {
+    const angle = (i / scale.length) * Math.PI * 2 - Math.PI / 2;
+    const x = center + radius * Math.cos(angle) - 50;
+    const y = center + radius * Math.sin(angle) - 55;
+    const midi = root + interval;
+    const name = noteNames[midi%12] + (Math.floor(midi/12)-1);
+
+    const div = document.createElement('div');
+    div.className = 'note';
+    div.style.left = x + 'px'; div.style.top = y + 'px';
+    div.innerHTML  = `<div class="mouse-wrap">${mouseSVG(i)}</div><div class="note-label">${name}</div>`;
+    div.dataset.midi = midi; div.dataset.name = name;
+    div.onmouseover = () => triggerNote(parseInt(div.dataset.midi), div.dataset.name, div);
+    circleEl.appendChild(div);
+  });
+}
+
+/* ══ Squeak Sound Synthesis ══
+   Layered approach: pitched noise burst + frequency-swept oscillator + pitch drop
+   Mimics a real mouse squeak: brief, bright, slightly nasal, with a falling pitch tail
+*/
+function playSqueakSound(midi) {
+  const ctx  = getCtx();
+  const now  = ctx.currentTime;
+  // Map midi note to a base frequency — but squish into a smaller, higher range
+  // so even low notes sound squeaky (mice don't go deep!)
+  const semitones = midi - 60; // offset from middle C
+  const baseFreq  = 1800 + semitones * 55; // 1200–3000 Hz range
+  const dur       = 0.18 + Math.random() * 0.12; // 0.18–0.30s per squeak
+
+  // ── Layer 1: bright square/sawtooth oscillator with pitch drop (the "squeak" body) ──
+  const osc1  = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'square';
+  osc1.frequency.setValueAtTime(baseFreq * 1.3, now);
+  osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.72, now + dur);
+  gain1.gain.setValueAtTime(0, now);
+  gain1.gain.linearRampToValueAtTime(0.28, now + 0.008);
+  gain1.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc1.connect(gain1); gain1.connect(masterGain);
+  osc1.start(now); osc1.stop(now + dur + 0.02);
+
+  // ── Layer 2: higher harmonic (nasal overtone) ──
+  const osc2  = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(baseFreq * 2.1, now);
+  osc2.frequency.exponentialRampToValueAtTime(baseFreq * 1.1, now + dur * 0.8);
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(0.12, now + 0.006);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.7);
+  osc2.connect(gain2); gain2.connect(masterGain);
+  osc2.start(now); osc2.stop(now + dur);
+
+  // ── Layer 3: filtered noise burst (breath/texture at attack) ──
+  const bufLen  = ctx.sampleRate * 0.06;
+  const buffer  = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const data    = buffer.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+  const noise   = ctx.createBufferSource();
+  noise.buffer  = buffer;
+  const bpf     = ctx.createBiquadFilter();
+  bpf.type      = 'bandpass';
+  bpf.frequency.value = baseFreq * 1.5;
+  bpf.Q.value   = 8;
+  const gainN   = ctx.createGain();
+  gainN.gain.setValueAtTime(0.18, now);
+  gainN.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+  noise.connect(bpf); bpf.connect(gainN); gainN.connect(masterGain);
+  noise.start(now); noise.stop(now + 0.06);
+
+  // ── Optional tiny second squeak chirp (50% chance, adds realism) ──
+  if (Math.random() > 0.5) {
+    const delay = dur + 0.04 + Math.random() * 0.06;
+    const osc3  = ctx.createOscillator();
+    const gain3 = ctx.createGain();
+    osc3.type   = 'square';
+    osc3.frequency.setValueAtTime(baseFreq * 1.1, now + delay);
+    osc3.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, now + delay + 0.10);
+    gain3.gain.setValueAtTime(0, now + delay);
+    gain3.gain.linearRampToValueAtTime(0.16, now + delay + 0.006);
+    gain3.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.10);
+    osc3.connect(gain3); gain3.connect(masterGain);
+    osc3.start(now + delay); osc3.stop(now + delay + 0.12);
+  }
+}
+
+/* ══ Flute Sound ══ */
+function playFluteSound(midi) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  const dur  = 0.55;
+
+  // Sine base + soft second harmonic for breathiness
+  const osc1  = ctx.createOscillator();
+  const osc2  = ctx.createOscillator();
+  const noise = ctx.createBufferSource();
+  const gain1 = ctx.createGain();
+  const gain2 = ctx.createGain();
+  const gainN = ctx.createGain();
+
+  osc1.type = 'sine'; osc1.frequency.value = freq;
+  osc2.type = 'sine'; osc2.frequency.value = freq * 2.01;
+
+  // Gentle attack, long sustain, soft release
+  gain1.gain.setValueAtTime(0, now);
+  gain1.gain.linearRampToValueAtTime(0.38, now + 0.06);
+  gain1.gain.setValueAtTime(0.38, now + dur - 0.12);
+  gain1.gain.linearRampToValueAtTime(0, now + dur);
+
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(0.08, now + 0.05);
+  gain2.gain.linearRampToValueAtTime(0, now + dur * 0.7);
+
+  // Breath noise
+  const bufLen = Math.floor(ctx.sampleRate * 0.08);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  noise.buffer = buf;
+  const hpf = ctx.createBiquadFilter();
+  hpf.type = 'highpass'; hpf.frequency.value = freq * 3;
+  gainN.gain.setValueAtTime(0.06, now);
+  gainN.gain.linearRampToValueAtTime(0, now + 0.08);
+
+  osc1.connect(gain1); gain1.connect(masterGain);
+  osc2.connect(gain2); gain2.connect(masterGain);
+  noise.connect(hpf); hpf.connect(gainN); gainN.connect(masterGain);
+
+  osc1.start(now); osc1.stop(now + dur + 0.02);
+  osc2.start(now); osc2.stop(now + dur);
+  noise.start(now); noise.stop(now + 0.09);
+}
+
+/* ══ Bell Sound ══ */
+function playBellSound(midi) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  const dur  = 1.4;
+
+  // Bell = fundamental + inharmonic partials
+  const partials = [1, 2.756, 5.404, 8.933];
+  partials.forEach((p, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq * p;
+    const amp = [0.5, 0.25, 0.12, 0.06][i];
+    gain.gain.setValueAtTime(amp, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur * (1 - i * 0.18));
+    osc.connect(gain); gain.connect(masterGain);
+    osc.start(now); osc.stop(now + dur);
+  });
+}
+
+/* ══ Marimba Sound ══ */
+function playMarimbaSound(midi) {
+  const ctx = getCtx();
+  const now = ctx.currentTime;
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  const dur  = 0.7;
+
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  const gain2 = ctx.createGain();
+
+  osc1.type = 'sine'; osc1.frequency.value = freq;
+  osc2.type = 'sine'; osc2.frequency.value = freq * 4.07; // characteristic marimba 4th partial
+
+  gain1.gain.setValueAtTime(0.45, now);
+  gain1.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  gain2.gain.setValueAtTime(0.18, now);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.35);
+
+  osc1.connect(gain1); gain1.connect(masterGain);
+  osc2.connect(gain2); gain2.connect(masterGain);
+  osc1.start(now); osc1.stop(now + dur);
+  osc2.start(now); osc2.stop(now + dur * 0.4);
+}
+
+/* ══ Play by instrument ══ */
+function playInstrumentSound(midi) {
+  switch (currentInstrument) {
+    case 'flute':   playFluteSound(midi);   break;
+    case 'bell':    playBellSound(midi);    break;
+    case 'marimba': playMarimbaSound(midi); break;
+    default:        playSqueakSound(midi);  break;
+  }
+}
+
+
+function triggerNote(midi, name, el) {
+  el.classList.add('playing');
+  el.querySelectorAll('.mouth-smile').forEach(m => m.style.opacity = '0');
+  el.querySelectorAll('.mouth-sing').forEach(m => m.setAttribute('opacity','1'));
+
+  // Conductor grows with big closed smile
+  const cond = document.getElementById('conductor');
+  cond.classList.add('conducting');
+  document.getElementById('cond-sing').setAttribute('opacity','1');
+  document.getElementById('cond-smile').setAttribute('opacity','0');
+
+  setTimeout(() => {
+    el.classList.remove('playing');
+    el.querySelectorAll('.mouth-smile').forEach(m => m.style.opacity = '');
+    el.querySelectorAll('.mouth-sing').forEach(m => m.setAttribute('opacity','0'));
+    cond.classList.remove('conducting');
+    document.getElementById('cond-sing').setAttribute('opacity','0');
+    document.getElementById('cond-smile').setAttribute('opacity','1');
+  }, 520);
+
+  if (!soundOn) return;
+  playInstrumentSound(midi);
+  sendMIDI(midi, name);
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  document.getElementById('soundBtn').innerText   = soundOn ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+  document.getElementById('soundState').innerText = soundOn ? 'Audio Enabled' : 'Audio Muted';
+}
+
+function togglePanel(id) {
+  const body = document.getElementById(id), arrow = document.getElementById('arrow-' + id);
+  const open = body.classList.contains('open');
+  body.classList.toggle('open', !open);
+  body.classList.toggle('collapsed', open);
+  arrow.classList.toggle('open', !open);
+}
+
+/* ══ Background — sky, sun, mountains, grass ══ */
+(function initBg() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+  const mouse = { x: -999, y: -999 };
+
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+  /* sun rays */
+  const RAY_COUNT = 20;
+  const rays = Array.from({ length: RAY_COUNT }, (_, i) => ({
+    angle: (i / RAY_COUNT) * Math.PI * 2,
+    len:   0.26 + Math.random() * 0.16,
+    width: 16 + Math.random() * 30,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.055 + Math.random() * 0.08,
+  }));
+
+  /* rounded hills — use sine/cosine sums for smooth bumps, no jagged peaks */
+  function makeHills(seed, count, baseY, amp) {
+    const pts = [];
+    const steps = 80; // smooth curve resolution
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      let y = baseY;
+      for (let h = 0; h < count; h++) {
+        const freq = 1.5 + Math.abs(Math.sin(seed * 3.7 + h * 2.1)) * 2.5;
+        const phase = Math.sin(seed * 7.3 + h * 5.9) * Math.PI * 2;
+        const a2 = amp * (0.4 + 0.6 * Math.abs(Math.sin(seed * 1.3 + h * 4.7)));
+        y -= Math.max(0, Math.sin(t * Math.PI * freq + phase)) * a2;
+      }
+      pts.push({ x: t, y: Math.max(0.05, Math.min(0.98, y)) });
+    }
+    return pts;
+  }
+
+  // layer 0 = far, layer 2 = near
+  const hillLayers = [
+    { pts: makeHills(1, 3, 0.58, 0.14), fill: 'rgba(210,140,200,0.55)', stroke: 'rgba(240,180,230,0.35)' },
+    { pts: makeHills(2, 4, 0.67, 0.13), fill: 'rgba(130,90,160,0.65)',  stroke: 'rgba(180,130,210,0.3)'  },
+    { pts: makeHills(3, 5, 0.74, 0.11), fill: 'rgba(60,100,60,0.80)',   stroke: 'rgba(100,160,80,0.4)'   },
+  ];
+
+  function drawHillLayer(layer, now) {
+    const pts = layer.pts;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    // smooth curve through points using quadratic bezier
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i].x * W,   ay = pts[i].y * H + Math.sin(now * 0.05 + pts[i].x * 4) * H * 0.003;
+      const bx = pts[i+1].x * W, by = pts[i+1].y * H + Math.sin(now * 0.05 + pts[i+1].x * 4) * H * 0.003;
+      const mx = (ax + bx) / 2,  my = (ay + by) / 2;
+      if (i === 0) ctx.lineTo(ax, ay);
+      ctx.quadraticCurveTo(ax, ay, mx, my);
+    }
+    const last = pts[pts.length-1];
+    ctx.lineTo(last.x * W, last.y * H);
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fillStyle = layer.fill;
+    ctx.fill();
+    // soft ridge line
+    ctx.beginPath();
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i].x * W,   ay = pts[i].y * H + Math.sin(now * 0.05 + pts[i].x * 4) * H * 0.003;
+      const bx = pts[i+1].x * W, by = pts[i+1].y * H + Math.sin(now * 0.05 + pts[i+1].x * 4) * H * 0.003;
+      const mx = (ax + bx) / 2,  my = (ay + by) / 2;
+      if (i === 0) ctx.moveTo(ax, ay);
+      ctx.quadraticCurveTo(ax, ay, mx, my);
+    }
+    ctx.strokeStyle = layer.stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  /* grass */
+  function rnd(a,b) { return a + Math.random() * (b - a); }
+  const blades = Array.from({ length: 520 }, () => ({
+    x: Math.random(), y: rnd(0.74, 1.0),
+    h: rnd(18, 56), width: rnd(1.1, 2.5),
+    phase: Math.random() * Math.PI * 2,
+    speed: rnd(0.18, 0.52), hue: rnd(70, 115),
+    sat: rnd(50, 85), lit: rnd(36, 60),
+    alpha: rnd(0.38, 0.80), swayAmp: rnd(4, 15),
+    isFlower: Math.random() < 0.06,
+    flowerHue: Math.random() < 0.6 ? rnd(38, 58) : rnd(0, 18),
+    petalR: rnd(2.5, 5),
+  }));
+
+  const MOUSE_R = 100, MOUSE_STR = 28;
+
+  function drawSun(now) {
+    const sx = W * 0.62, sy = H * 0.20, sr = 68;
+    rays.forEach(r => {
+      const pulse = 0.55 + 0.45 * Math.sin(now * r.speed + r.phase);
+      const rLen  = W * r.len * pulse;
+      const ex    = sx + Math.cos(r.angle) * rLen;
+      const ey    = sy + Math.sin(r.angle) * rLen;
+      const grd   = ctx.createLinearGradient(sx, sy, ex, ey);
+      grd.addColorStop(0,   `rgba(255,220,100,${0.24 * pulse})`);
+      grd.addColorStop(0.5, `rgba(255,170,30,${0.09 * pulse})`);
+      grd.addColorStop(1,   'rgba(255,130,0,0)');
+      const hw = r.width * 0.5 * pulse;
+      const nx = Math.cos(r.angle + Math.PI/2), ny = Math.sin(r.angle + Math.PI/2);
+      ctx.beginPath();
+      ctx.moveTo(sx + Math.cos(r.angle) * sr * 0.9, sy + Math.sin(r.angle) * sr * 0.9);
+      ctx.lineTo(ex + nx * hw, ey + ny * hw);
+      ctx.lineTo(ex - nx * hw, ey - ny * hw);
+      ctx.closePath();
+      ctx.fillStyle = grd; ctx.fill();
+    });
+    const halo = ctx.createRadialGradient(sx, sy, sr*0.5, sx, sy, sr*5);
+    halo.addColorStop(0, 'rgba(255,240,160,0.3)');
+    halo.addColorStop(0.4,'rgba(255,180,60,0.1)');
+    halo.addColorStop(1,  'rgba(255,120,0,0)');
+    ctx.beginPath(); ctx.arc(sx, sy, sr*5, 0, Math.PI*2);
+    ctx.fillStyle = halo; ctx.fill();
+    const disc = ctx.createRadialGradient(sx-sr*0.18, sy-sr*0.18, sr*0.08, sx, sy, sr);
+    disc.addColorStop(0,   '#fffde0'); disc.addColorStop(0.4,'#ffe050');
+    disc.addColorStop(0.8,'#ffaa08'); disc.addColorStop(1,'#e05800');
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2);
+    ctx.fillStyle = disc;
+    ctx.shadowBlur = 44; ctx.shadowColor = 'rgba(255,180,0,0.75)';
+    ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  function drawBlade(b, now) {
+    const px = b.x * W, py = b.y * H;
+    const amb = Math.sin(now * b.speed + b.phase) * b.swayAmp;
+    const dx  = px - mouse.x, dy = py - mouse.y;
+    const d   = Math.sqrt(dx*dx + dy*dy);
+    const ml  = d < MOUSE_R ? (dx/(d||1)) * (1 - d/MOUSE_R) * MOUSE_STR : 0;
+    const lean = amb + ml;
+    const a    = b.alpha * (0.82 + 0.18 * Math.sin(now * 0.35 + b.phase));
+    const tx   = px + lean, ty = py - b.h;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.quadraticCurveTo(px + lean*0.5, py - b.h*0.55, tx, ty);
+    ctx.strokeStyle = `hsla(${b.hue},${b.sat}%,${b.lit}%,${a})`;
+    ctx.lineWidth = b.width; ctx.lineCap = 'round';
+    ctx.shadowBlur = 4; ctx.shadowColor = `hsla(${b.hue},90%,75%,0.22)`;
+    ctx.stroke(); ctx.shadowBlur = 0;
+    if (b.isFlower) {
+      const fa = a * 0.88, fr = b.petalR;
+      for (let p = 0; p < 5; p++) {
+        const ang = (p/5)*Math.PI*2 + now*0.07;
+        ctx.beginPath();
+        ctx.ellipse(tx+Math.cos(ang)*fr*1.4, ty+Math.sin(ang)*fr*1.4, fr, fr*0.6, ang, 0, Math.PI*2);
+        ctx.fillStyle = `hsla(${b.flowerHue},85%,72%,${fa})`;
+        ctx.shadowBlur = 6; ctx.shadowColor = `hsla(${b.flowerHue},100%,85%,0.38)`;
+        ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(tx, ty, fr*0.5, 0, Math.PI*2);
+      ctx.fillStyle = `hsla(50,100%,90%,${fa})`;
+      ctx.shadowBlur = 4; ctx.shadowColor = 'rgba(255,240,180,0.5)';
+      ctx.fill(); ctx.shadowBlur = 0;
+    }
+  }
+
+  function frame(ts) {
+    const now = ts * 0.001;
+    ctx.clearRect(0, 0, W, H);
+
+    /* ── Sky: cornflower blue top → pink/peach mid → warm amber horizon ── */
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0,    '#5b8fd4');   // blue at very top
+    sky.addColorStop(0.18, '#88aadd');   // lighter blue
+    sky.addColorStop(0.38, '#e8a8c8');   // pink/rose mid
+    sky.addColorStop(0.55, '#f5c878');   // warm peach-amber
+    sky.addColorStop(0.70, '#e88020');   // orange near horizon
+    sky.addColorStop(0.80, '#8b4a18');   // warm brown above hills
+    sky.addColorStop(1,    '#2a5a18');   // green at bottom
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    /* soft horizon glow */
+    const horiz = ctx.createRadialGradient(W*0.62, H*0.54, 0, W*0.62, H*0.54, W*0.50);
+    horiz.addColorStop(0,   'rgba(255,200,120,0.30)');
+    horiz.addColorStop(0.5, 'rgba(240,140,60,0.10)');
+    horiz.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = horiz; ctx.fillRect(0, 0, W, H);
+
+    drawSun(now);
+
+    /* hills back to front */
+    hillLayers.forEach(l => drawHillLayer(l, now));
+
+    /* green ground fill */
+    const gnd = ctx.createLinearGradient(0, H*0.74, 0, H);
+    gnd.addColorStop(0,   '#3a6a1a');   // bright grass green
+    gnd.addColorStop(0.35,'#285510');
+    gnd.addColorStop(0.7, '#1a3a0a');
+    gnd.addColorStop(1,   '#0e2206');
+    ctx.fillStyle = gnd; ctx.fillRect(0, H*0.74, W, H);
+
+    blades.slice().sort((a,b2) => b2.y - a.y).forEach(b => drawBlade(b, now));
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+})();
+
+/* ══ Init ══ */
+updateLabel();
+createCircle();
+window.addEventListener('load', () => {
+  const vsl = document.getElementById('volSlider');
+  vsl.style.setProperty('--pct', '10%');
+  const tw = vsl.offsetWidth - 14;
+  document.getElementById('butterfly-knob').style.left = Math.round(0.10 * tw - 8) + 'px';
+
+  const rsl = document.getElementById('reverbSlider');
+  rsl.style.setProperty('--rev-pct', '75%');
+});
+
+// Init singing mouth opacity on SVG load
+document.querySelectorAll('.mouth-sing').forEach(el => el.setAttribute('opacity','0'));
+</script>
+</body>
+</html>
